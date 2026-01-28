@@ -20,7 +20,7 @@ if ($conn) {
         
         if (mysqli_num_rows($tableCheck) > 0) {
             // Table exists, fetch banners
-            $result = mysqli_query($conn, "SELECT * FROM banners WHERE status = 'active' ORDER BY display_order ASC LIMIT 5");
+            $result = mysqli_query($conn, "SELECT * FROM banners WHERE status = 'active' ORDER BY display_order ASC LIMIT 1");
             
             if ($result && mysqli_num_rows($result) > 0) {
                 while ($banner = mysqli_fetch_assoc($result)) {
@@ -41,16 +41,8 @@ if (empty($banners)) {
             'title' => 'We Care For Your Future',
             'subtitle' => 'Find Experienced Tutor - ONLINE & HOME TUTORS WITHIN 30 MINUTES',
             'image_url' => 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80',
-        ],
-        [
-            'title' => 'Expert Tutors For Every Subject',
-            'subtitle' => '3000+ Verified Tutors Across 50+ Subjects',
-            'image_url' => 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80',
-        ],
-        [
-            'title' => 'Score Higher, Learn Better',
-            'subtitle' => '98% Success Rate with Personalized Learning Plans',
-            'image_url' => 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80',
+            'button_text' => 'Find Tutors Now',
+            'button_link' => 'student-portal.php'
         ]
     ];
 }
@@ -60,85 +52,55 @@ if (isset($conn) && $conn) {
     mysqli_close($conn);
 }
 ?>
-<link rel="stylesheet" href="style.css">
-<!-- Hero Section with Animated Banner Slider -->
-<section class="hero">
-    <div class="hero-banner-slider">
-        <div class="slider-container">
-            <?php foreach($banners as $index => $banner): ?>
-                <div class="slider-slide">
-                    <div class="slide-image" style="background-image: url('<?php echo htmlspecialchars($banner['image_url']); ?>');"></div>
-                    <div class="slide-overlay"></div>
-                    <div class="slide-content">
-                        <h1 class="slide-title animate-title"><?php echo htmlspecialchars($banner['title']); ?></h1>
-                        <p class="slide-subtitle animate-subtitle"><?php echo htmlspecialchars($banner['subtitle']); ?></p>
-                        <?php if(!empty($banner['button_text'])): ?>
-                            <a href="<?php echo htmlspecialchars($banner['button_link']); ?>" class="slide-button animate-button">
-                                <?php echo htmlspecialchars($banner['button_text']); ?>
-                            </a>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            <?php endforeach; ?>
-        </div>
-        
-        <!-- Slider Controls -->
-        <div class="slider-controls">
-            <button class="slider-prev"><i class="fas fa-chevron-left"></i></button>
-            <div class="slider-dots"></div>
-            <button class="slider-next"><i class="fas fa-chevron-right"></i></button>
-        </div>
+
+<!-- Hero Section with Clean Banner -->
+<section class="hero-banner">
+    <div class="banner-background">
+        <?php if(!empty($banners) && isset($banners[0])): ?>
+            <div class="banner-image" style="background-image: url('<?php echo htmlspecialchars($banners[0]['image_url']); ?>');"></div>
+        <?php endif; ?>
+        <div class="banner-overlay"></div>
     </div>
     
-    <!-- Search Box Overlay -->
-<div class="hero-search-overlay">
-    <div class="hero-content">
-        <div class="search-box animate-search">
-            <div class="search-input-group">
-                <i class="fas fa-map-marker-alt"></i>
-                <input type="text" class="search-input" placeholder="Find Tutors in Nearby Location" id="locationSearch">
-            </div>
-
-            <div class="search-input-group">
-                <i class="fas fa-book"></i>
-                <input type="text" class="search-input" placeholder="Enter Subject or Grade" id="subjectSearch">
-            </div>
-
-            <button class="search-button" onclick="searchTutors()">
-                <i class="fas fa-search"></i> Search Tutors
-            </button>
+    <div class="hero-container">
+        <div class="hero-content">
+            <h1 class="hero-title"><?php echo htmlspecialchars($banners[0]['title'] ?? 'We Care For Your Future'); ?></h1>
+            <p class="hero-subtitle"><?php echo htmlspecialchars($banners[0]['subtitle'] ?? 'Find Experienced Tutor - ONLINE & HOME TUTORS WITHIN 30 MINUTES'); ?></p>
+            <a href="<?php echo htmlspecialchars($banners[0]['button_link'] ?? 'student-portal.php'); ?>" class="hero-cta-button">
+                <?php echo htmlspecialchars($banners[0]['button_text'] ?? 'Find Tutors Now'); ?>
+            </a>
         </div>
     </div>
-</div>
-
 </section>
-<section>
-     <div class="hero-stats animate-stats">
-            <div class="stat-item">
-                <span class="stat-number" data-target="3000">0</span>
-                <span class="stat-label">Expert Tutors</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-number" data-target="98">0</span>
-                <span class="stat-label">Success Rate</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-number" data-target="5500">0</span>
-                <span class="stat-label">Students</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-number" data-target="2100">0</span>
-                <span class="stat-label">Demo Classes</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-number" data-target="700">0</span>
-                <span class="stat-label">Leads</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-number" data-target="5000">0</span>
-                <span class="stat-label">Admissions</span>
-            </div>
+
+<!-- Statistics Section -->
+<section class="hero-stats-section">
+    <div class="stats-container">
+        <div class="stat-box">
+            <div class="stat-number">3000+</div>
+            <div class="stat-label">Expert Tutors</div>
         </div>
+        <div class="stat-box">
+            <div class="stat-number">98%</div>
+            <div class="stat-label">Success Rate</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-number">5500+</div>
+            <div class="stat-label">Students</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-number">2100+</div>
+            <div class="stat-label">Demo Classes</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-number">700+</div>
+            <div class="stat-label">Active Leads</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-number">5000+</div>
+            <div class="stat-label">Admissions</div>
+        </div>
+    </div>
 </section>
 
 <!-- How We Work Section -->
