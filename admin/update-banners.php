@@ -2,1143 +2,812 @@
 session_start();
 include '../includes/config.php';
 
-// Check if admin is logged in
-if (!isset($_SESSION['admin_id'])) {
+if (!isset($_SESSION['admin_logged_in'])) {
     header('Location: login.php');
     exit();
 }
 
-// Handle form submissions
-$message = '';
-$message_type = '';
+// Create banners directory if it doesn't exist
+$banners_dir = '../uploads/banners/';
+if (!file_exists($banners_dir)) {
+    mkdir($banners_dir, 0777, true);
+}
 
-// Add new banner
-if (isset($_POST['add_banner'])) {
+// Handle banner upload
+$success = $error = '';
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['banner_image'])) {
+    $position = mysqli_real_escape_string($conn, $_POST['position']);
     $title = mysqli_real_escape_string($conn, $_POST['title']);
     $subtitle = mysqli_real_escape_string($conn, $_POST['subtitle']);
+    $button_text = mysqli_real_escape_string($conn, $_POST['button_text']);
+    $button_link = mysqli_real_escape_string($conn, $_POST['button_link']);
+    $is_active = isset($_POST['is_active']) ? 1 : 0;
     
     // Handle file upload
-    $image_url = '';
-    if (isset($_FILES['banner_image']) && $_FILES['banner_image']['error'] == 0) {
-        $upload_dir = '../assets/images/banners/';
-        if (!is_dir($upload_dir)) {
-            mkdir($upload_dir, 0755, true);
-        }
-        
+    $image_path = '';
+    if ($_FILES['banner_image']['error'] == 0) {
         $file_name = time() . '_' . basename($_FILES['banner_image']['name']);
-        $file_path = $upload_dir . $file_name;
+        $target_file = $banners_dir . $file_name;
         
-        $allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-        $file_type = $_FILES['banner_image']['type'];
+        // Check file type
+        $imageFileType = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
+        $allowed_types = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
         
-        if (in_array($file_type, $allowed_types)) {
-            if (move_uploaded_file($_FILES['banner_image']['tmp_name'], $file_path)) {
-                $image_url = 'assets/images/banners/' . $file_name;
+        if (in_array($imageFileType, $allowed_types)) {
+            if (move_uploaded_file($_FILES['banner_image']['tmp_name'], $target_file)) {
+                $image_path = 'uploads/banners/' . $file_name;
             } else {
-                $message = 'Error uploading file.';
-                $message_type = 'error';
+                $error = "Failed to upload image.";
             }
         } else {
-            $message = 'Invalid file type. Only JPG, PNG, GIF, and WebP are allowed.';
-            $message_type = 'error';
+            $error = "Only JPG, JPEG, PNG, GIF & WEBP files are allowed.";
         }
     }
     
-    $button_text = mysqli_real_escape_string($conn, $_POST['button_text']);
-    $button_link = mysqli_real_escape_string($conn, $_POST['button_link']);
-    $position = mysqli_real_escape_string($conn, $_POST['position']);
-    $status = mysqli_real_escape_string($conn, $_POST['status']);
-    $display_order = (int)$_POST['display_order'];
-    
-    if ($image_url) {
-        $sql = "INSERT INTO banners (title, subtitle, image_url, button_text, button_link, position, status, display_order) 
-                VALUES ('$title', '$subtitle', '$image_url', '$button_text', '$button_link', '$position', '$status', '$display_order')";
+    if (empty($error)) {
+        $sql = "INSERT INTO banners (position, title, subtitle, button_text, button_link, image_path, is_active) 
+                VALUES ('$position', '$title', '$subtitle', '$button_text', '$button_link', '$image_path', '$is_active')";
         
         if (mysqli_query($conn, $sql)) {
-            $message = 'Banner added successfully!';
-            $message_type = 'success';
+            $_SESSION['success'] = "Banner added successfully!";
+            header('Location: update-banners.php');
+            exit();
         } else {
-            $message = 'Error adding banner: ' . mysqli_error($conn);
-            $message_type = 'error';
+            $error = "Error saving banner: " . mysqli_error($conn);
         }
-    } elseif (empty($_FILES['banner_image']['name'])) {
-        $message = 'Please select an image for the banner.';
-        $message_type = 'error';
     }
 }
 
-// Update banner
-if (isset($_POST['update_banner'])) {
-    $id = (int)$_POST['banner_id'];
-    $title = mysqli_real_escape_string($conn, $_POST['title']);
-    $subtitle = mysqli_real_escape_string($conn, $_POST['subtitle']);
-    $button_text = mysqli_real_escape_string($conn, $_POST['button_text']);
-    $button_link = mysqli_real_escape_string($conn, $_POST['button_link']);
-    $position = mysqli_real_escape_string($conn, $_POST['position']);
-    $status = mysqli_real_escape_string($conn, $_POST['status']);
-    $display_order = (int)$_POST['display_order'];
-    
-    // Handle image update if new file is uploaded
-    $update_image = '';
-    if (isset($_FILES['banner_image']) && $_FILES['banner_image']['error'] == 0) {
-        $upload_dir = '../assets/images/banners/';
-        $file_name = time() . '_' . basename($_FILES['banner_image']['name']);
-        $file_path = $upload_dir . $file_name;
-        
-        $allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-        $file_type = $_FILES['banner_image']['type'];
-        
-        if (in_array($file_type, $allowed_types)) {
-            if (move_uploaded_file($_FILES['banner_image']['tmp_name'], $file_path)) {
-                // Delete old image
-                $old_image_query = mysqli_query($conn, "SELECT image_url FROM banners WHERE id = $id");
-                if ($old_image_row = mysqli_fetch_assoc($old_image_query)) {
-                    $old_image_path = '../' . $old_image_row['image_url'];
-                    if (file_exists($old_image_path)) {
-                        unlink($old_image_path);
-                    }
-                }
-                $update_image = ", image_url = 'assets/images/banners/$file_name'";
-            }
-        }
-    }
-    
-    $sql = "UPDATE banners SET 
-            title = '$title',
-            subtitle = '$subtitle',
-            button_text = '$button_text',
-            button_link = '$button_link',
-            position = '$position',
-            status = '$status',
-            display_order = '$display_order'
-            $update_image
-            WHERE id = $id";
-    
-    if (mysqli_query($conn, $sql)) {
-        $message = 'Banner updated successfully!';
-        $message_type = 'success';
-    } else {
-        $message = 'Error updating banner: ' . mysqli_error($conn);
-        $message_type = 'error';
-    }
-}
-
-// Delete banner
+// Handle banner deletion
 if (isset($_GET['delete'])) {
-    $id = (int)$_GET['delete'];
+    $id = mysqli_real_escape_string($conn, $_GET['delete']);
     
-    // Get image path before deleting
-    $image_query = mysqli_query($conn, "SELECT image_url FROM banners WHERE id = $id");
-    if ($image_row = mysqli_fetch_assoc($image_query)) {
-        $image_path = '../' . $image_row['image_url'];
-        if (file_exists($image_path)) {
-            unlink($image_path);
+    // Get banner info to delete image file
+    $banner_query = "SELECT image_path FROM banners WHERE id = '$id'";
+    $banner_result = mysqli_query($conn, $banner_query);
+    $banner = mysqli_fetch_assoc($banner_result);
+    
+    // Delete image file if exists
+    if ($banner && !empty($banner['image_path'])) {
+        $image_file = '../' . $banner['image_path'];
+        if (file_exists($image_file)) {
+            unlink($image_file);
         }
     }
     
-    $sql = "DELETE FROM banners WHERE id = $id";
-    
+    // Delete from database
+    $sql = "DELETE FROM banners WHERE id = '$id'";
     if (mysqli_query($conn, $sql)) {
-        $message = 'Banner deleted successfully!';
-        $message_type = 'success';
+        $_SESSION['success'] = "Banner deleted successfully!";
+        header('Location: update-banners.php');
+        exit();
     } else {
-        $message = 'Error deleting banner: ' . mysqli_error($conn);
-        $message_type = 'error';
+        $error = "Error deleting banner: " . mysqli_error($conn);
     }
 }
 
-// Toggle banner status
+// Handle banner status toggle
 if (isset($_GET['toggle'])) {
-    $id = (int)$_GET['toggle'];
-    
-    $sql = "UPDATE banners SET status = IF(status = 'active', 'inactive', 'active') WHERE id = $id";
-    
+    $id = mysqli_real_escape_string($conn, $_GET['toggle']);
+    $sql = "UPDATE banners SET is_active = NOT is_active WHERE id = '$id'";
     if (mysqli_query($conn, $sql)) {
-        $message = 'Banner status updated!';
-        $message_type = 'success';
-    } else {
-        $message = 'Error updating status: ' . mysqli_error($conn);
-        $message_type = 'error';
+        $_SESSION['success'] = "Banner status updated!";
+        header('Location: update-banners.php');
+        exit();
     }
 }
 
 // Fetch all banners
-$banners_query = "SELECT * FROM banners ORDER BY position, display_order, created_at DESC";
+$banners_query = "SELECT * FROM banners ORDER BY position, created_at DESC";
 $banners_result = mysqli_query($conn, $banners_query);
 
-// Count banners by status
-$active_count = mysqli_num_rows(mysqli_query($conn, "SELECT id FROM banners WHERE status = 'active'"));
-$inactive_count = mysqli_num_rows(mysqli_query($conn, "SELECT id FROM banners WHERE status = 'inactive'"));
-$total_count = $active_count + $inactive_count;
+// Check if banners table exists, create if not
+$table_check = mysqli_query($conn, "SHOW TABLES LIKE 'banners'");
+if (mysqli_num_rows($table_check) == 0) {
+    // Create banners table
+    $create_table = "CREATE TABLE banners (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        position VARCHAR(50) NOT NULL COMMENT 'home, about, etc.',
+        title VARCHAR(255),
+        subtitle TEXT,
+        button_text VARCHAR(100),
+        button_link VARCHAR(500),
+        image_path VARCHAR(500) NOT NULL,
+        is_active BOOLEAN DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )";
+    mysqli_query($conn, $create_table);
+}
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Banners - Admin Panel</title>
+    <title>Update Banners - Admin Panel</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
             --primary-purple: #3B0A6A;
             --royal-violet: #5E2B97;
             --magenta-pink: #C13C91;
             --warm-orange: #F6A04D;
-            --white: #FFFFFF;
-            --light-gray: #F8F9FA;
-            --medium-gray: #E9ECEF;
-            --dark-gray: #343A40;
-            --success-green: #28a745;
-            --danger-red: #dc3545;
-            --warning-yellow: #ffc107;
-            --info-blue: #17a2b8;
-            --shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-            --radius: 12px;
-            --transition: all 0.3s ease;
+            --dark-gray: #333333;
+            --light-gray: #f8f9fa;
+            --medium-gray: #e9ecef;
         }
-
+        
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-
+        
         body {
-            font-family: 'Inter', 'Roboto', sans-serif;
-            background: #f5f7fa;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--light-gray);
             color: var(--dark-gray);
             line-height: 1.6;
         }
-
-        .admin-container {
+        
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+            color: var(--primary-purple);
+        }
+        
+        .dashboard-container {
             display: flex;
             min-height: 100vh;
         }
-
-        /* Sidebar */
+        
+        /* Sidebar Styles */
         .sidebar {
             width: 250px;
-            background: linear-gradient(135deg, var(--primary-purple), var(--royal-violet));
-            color: var(--white);
+            background: linear-gradient(180deg, var(--primary-purple) 0%, var(--royal-violet) 100%);
+            color: white;
             position: fixed;
             height: 100vh;
             overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 3px 0 15px rgba(0,0,0,0.1);
         }
-
-        .logo {
-            padding: 1.5rem;
+        
+        .sidebar-header {
+            padding: 25px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
             text-align: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
-
-        .logo h2 {
-            font-family: 'Poppins', sans-serif;
-            font-weight: 600;
-            color: var(--white);
+        
+        .sidebar-header h2 {
+            color: white;
+            font-size: 22px;
+            margin-bottom: 5px;
         }
-
-        .logo span {
-            color: var(--warm-orange);
+        
+        .sidebar-menu {
+            padding: 20px 0;
         }
-
-        .nav-links {
-            padding: 1.5rem 0;
-        }
-
-        .nav-links a {
+        
+        .menu-item {
+            padding: 15px 25px;
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 0.8rem 1.5rem;
-            color: rgba(255, 255, 255, 0.8);
+            color: rgba(255,255,255,0.9);
             text-decoration: none;
-            transition: var(--transition);
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border-left: 4px solid transparent;
         }
-
-        .nav-links a:hover,
-        .nav-links a.active {
-            background: rgba(255, 255, 255, 0.1);
-            color: var(--white);
-            border-left: 4px solid var(--warm-orange);
+        
+        .menu-item:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border-left-color: var(--magenta-pink);
         }
-
-        .nav-links i {
-            width: 20px;
-            text-align: center;
+        
+        .menu-item.active {
+            background: rgba(255,255,255,0.15);
+            color: white;
+            border-left-color: var(--warm-orange);
         }
-
-        /* Main Content */
+        
         .main-content {
             flex: 1;
             margin-left: 250px;
-            padding: 2rem;
+            padding: 30px;
+            min-height: 100vh;
         }
-
-        .header {
+        
+        .page-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 2rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid var(--medium-gray);
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--medium-gray);
         }
-
-        .header h1 {
-            font-family: 'Poppins', sans-serif;
-            color: var(--primary-purple);
-            font-weight: 600;
-        }
-
-        .admin-info {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .admin-avatar {
-            width: 45px;
-            height: 45px;
-            background: var(--royal-violet);
-            color: var(--white);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-        }
-
-        /* Stats Cards */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: var(--white);
-            padding: 1.5rem;
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
-            text-align: center;
-            transition: var(--transition);
-        }
-
-        .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(94, 43, 151, 0.15);
-        }
-
-        .stat-card.total { border-top: 4px solid var(--royal-violet); }
-        .stat-card.active { border-top: 4px solid var(--success-green); }
-        .stat-card.inactive { border-top: 4px solid var(--danger-red); }
-
-        .stat-number {
-            font-size: 2.5rem;
-            font-weight: 700;
-            font-family: 'Poppins', sans-serif;
-            margin-bottom: 0.5rem;
-        }
-
-        .stat-card.total .stat-number { color: var(--royal-violet); }
-        .stat-card.active .stat-number { color: var(--success-green); }
-        .stat-card.inactive .stat-number { color: var(--danger-red); }
-
-        .stat-label {
-            color: #666;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        /* Message Alert */
-        .alert {
-            padding: 1rem;
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--magenta-pink), var(--royal-violet));
+            color: white;
+            padding: 12px 25px;
+            border: none;
             border-radius: 8px;
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            animation: slideDown 0.3s ease;
-        }
-
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .alert.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .alert.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        .alert.info {
-            background: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
-
-        .alert .close-btn {
-            background: none;
-            border: none;
             cursor: pointer;
-            font-size: 1.2rem;
-            color: inherit;
-        }
-
-        /* Action Buttons */
-        .action-buttons {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 2rem;
-            flex-wrap: wrap;
-        }
-
-        .btn {
-            padding: 0.8rem 1.5rem;
-            border-radius: 30px;
-            border: none;
             font-family: 'Poppins', sans-serif;
             font-weight: 500;
-            cursor: pointer;
-            transition: var(--transition);
+            font-size: 15px;
             display: inline-flex;
             align-items: center;
             gap: 8px;
+            transition: all 0.3s ease;
             text-decoration: none;
+            box-shadow: 0 4px 12px rgba(195, 60, 145, 0.25);
         }
-
-        .btn-primary {
-            background: var(--magenta-pink);
-            color: var(--white);
-        }
-
+        
         .btn-primary:hover {
-            background: var(--royal-violet);
             transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(193, 60, 145, 0.3);
+            box-shadow: 0 6px 18px rgba(195, 60, 145, 0.35);
         }
-
-        .btn-success {
-            background: var(--success-green);
-            color: var(--white);
+        
+        .alert {
+            padding: 16px 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-left: 4px solid transparent;
         }
-
-        .btn-warning {
-            background: var(--warning-yellow);
-            color: var(--dark-gray);
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border-left-color: #28a745;
         }
-
-        .btn-danger {
-            background: var(--danger-red);
-            color: var(--white);
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left-color: #dc3545;
         }
-
-        .btn-outline {
-            background: transparent;
-            color: var(--royal-violet);
-            border: 2px solid var(--royal-violet);
+        
+        .banners-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
         }
-
-        .btn-outline:hover {
-            background: var(--royal-violet);
-            color: var(--white);
-        }
-
-        /* Banners Table */
-        .table-container {
-            background: var(--white);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
+        
+        .banner-card {
+            background: white;
+            border-radius: 12px;
             overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
         }
-
-        table {
+        
+        .banner-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+        }
+        
+        .banner-image {
+            height: 200px;
             width: 100%;
-            border-collapse: collapse;
-        }
-
-        thead {
-            background: linear-gradient(135deg, var(--primary-purple), var(--royal-violet));
-            color: var(--white);
-        }
-
-        th {
-            padding: 1rem;
-            text-align: left;
-            font-family: 'Poppins', sans-serif;
-            font-weight: 500;
-        }
-
-        tbody tr {
-            border-bottom: 1px solid var(--medium-gray);
-            transition: var(--transition);
-        }
-
-        tbody tr:hover {
-            background: rgba(94, 43, 151, 0.05);
-        }
-
-        td {
-            padding: 1rem;
-            vertical-align: middle;
-        }
-
-        .banner-preview {
-            width: 100px;
-            height: 60px;
-            border-radius: 6px;
-            overflow: hidden;
-            background: var(--light-gray);
-        }
-
-        .banner-preview img {
-            width: 100%;
-            height: 100%;
             object-fit: cover;
         }
-
-        .status-badge {
-            padding: 0.3rem 0.8rem;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 500;
+        
+        .banner-content {
+            padding: 20px;
         }
-
-        .status-active {
+        
+        .banner-position {
+            display: inline-block;
+            background: var(--light-gray);
+            color: var(--royal-violet);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+        
+        .banner-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--primary-purple);
+        }
+        
+        .banner-subtitle {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+        
+        .banner-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid var(--medium-gray);
+        }
+        
+        .action-btn {
+            flex: 1;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+        
+        .btn-toggle { 
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-edit { 
+            background: #17a2b8;
+            color: white;
+        }
+        
+        .btn-delete { 
+            background: #dc3545;
+            color: white;
+        }
+        
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .status-active { 
             background: #d4edda;
             color: #155724;
         }
-
-        .status-inactive {
+        
+        .status-inactive { 
             background: #f8d7da;
             color: #721c24;
         }
-
-        .actions {
-            display: flex;
-            gap: 0.5rem;
+        
+        /* Form Styles */
+        .form-container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            margin-bottom: 40px;
         }
-
-        .action-btn {
-            width: 35px;
-            height: 35px;
-            border-radius: 50%;
-            border: none;
-            cursor: pointer;
-            transition: var(--transition);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .edit-btn {
-            background: #e3f2fd;
-            color: #1976d2;
-        }
-
-        .edit-btn:hover {
-            background: #bbdefb;
-        }
-
-        .delete-btn {
-            background: #ffebee;
-            color: #d32f2f;
-        }
-
-        .delete-btn:hover {
-            background: #ffcdd2;
-        }
-
-        .toggle-btn {
-            background: #fff3e0;
-            color: #f57c00;
-        }
-
-        .toggle-btn:hover {
-            background: #ffe0b2;
-        }
-
-        /* Modal */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal.active {
-            display: flex;
-            animation: fadeIn 0.3s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        .modal-content {
-            background: var(--white);
-            border-radius: var(--radius);
-            width: 90%;
-            max-width: 600px;
-            max-height: 90vh;
-            overflow-y: auto;
-            animation: slideUp 0.3s ease;
-        }
-
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(50px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .modal-header {
-            padding: 1.5rem;
-            border-bottom: 1px solid var(--medium-gray);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .modal-header h3 {
-            font-family: 'Poppins', sans-serif;
-            color: var(--primary-purple);
-            font-weight: 600;
-        }
-
-        .close-modal {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: #666;
-        }
-
-        .modal-body {
-            padding: 1.5rem;
-        }
-
+        
         .form-group {
-            margin-bottom: 1.5rem;
+            margin-bottom: 20px;
         }
-
+        
         .form-group label {
             display: block;
-            margin-bottom: 0.5rem;
+            margin-bottom: 8px;
+            color: var(--dark-gray);
             font-weight: 500;
-            color: var(--primary-purple);
+            font-size: 14px;
         }
-
+        
         .form-control {
             width: 100%;
-            padding: 0.8rem 1rem;
+            padding: 12px 16px;
             border: 2px solid var(--medium-gray);
             border-radius: 8px;
-            font-family: 'Inter', 'Roboto', sans-serif;
-            transition: var(--transition);
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.3s ease;
+            background: white;
         }
-
+        
         .form-control:focus {
             outline: none;
             border-color: var(--royal-violet);
             box-shadow: 0 0 0 3px rgba(94, 43, 151, 0.1);
         }
-
-        .file-preview {
-            margin-top: 0.5rem;
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
         }
-
-        .file-preview img {
-            max-width: 200px;
-            max-height: 120px;
+        
+        .image-preview {
+            width: 100%;
+            max-height: 200px;
+            object-fit: cover;
             border-radius: 8px;
-            border: 2px solid var(--medium-gray);
+            margin-top: 10px;
+            border: 2px dashed var(--medium-gray);
+            padding: 10px;
+            display: none;
         }
-
-        .modal-footer {
-            padding: 1.5rem;
-            border-top: 1px solid var(--medium-gray);
-            text-align: right;
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
-
-        /* Empty State */
-        .empty-state {
-            text-align: center;
-            padding: 3rem;
-            color: #666;
+        
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
         }
-
-        .empty-state i {
-            font-size: 3rem;
-            color: var(--medium-gray);
-            margin-bottom: 1rem;
+        
+        .mobile-menu-toggle {
+            display: none;
+            background: var(--primary-purple);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 20px;
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1001;
         }
-
-        /* Responsive */
-        @media (max-width: 992px) {
+        
+        @media (max-width: 1200px) {
             .sidebar {
-                width: 70px;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
             }
-
-            .sidebar .logo h2,
-            .sidebar .nav-links a span {
-                display: none;
+            
+            .sidebar.active {
+                transform: translateX(0);
             }
-
-            .main-content {
-                margin-left: 70px;
-            }
-
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media (max-width: 768px) {
-            .main-content {
-                padding: 1rem;
-            }
-
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-
-            table {
-                display: block;
-                overflow-x: auto;
-            }
-
-            .actions {
-                flex-direction: column;
-            }
-
-            .action-btn {
-                width: 30px;
-                height: 30px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .admin-container {
-                flex-direction: column;
-            }
-
-            .sidebar {
-                width: 100%;
-                height: auto;
-                position: relative;
-            }
-
+            
             .main-content {
                 margin-left: 0;
             }
-
-            .nav-links {
-                display: flex;
-                overflow-x: auto;
+            
+            .mobile-menu-toggle {
+                display: block;
             }
-
-            .nav-links a {
-                padding: 0.8rem;
-                white-space: nowrap;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                padding: 20px;
+            }
+            
+            .banners-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
             }
         }
     </style>
 </head>
 <body>
-    <div class="admin-container">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="logo">
-                <h2>Home<span>Castle</span></h2>
-                <p style="font-size: 0.8rem; margin-top: 5px; opacity: 0.8;">Admin Panel</p>
-            </div>
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-toggle" onclick="toggleSidebar()">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h2>Home Castle Tutor</h2>
+            <p>Admin Panel</p>
+        </div>
+        
+        <div class="sidebar-menu">
+            <?php
+            $current_page = basename($_SERVER['PHP_SELF']);
+            $menu_items = [
+                ['dashboard.php', 'fa-tachometer-alt', 'Dashboard'],
+                ['student-requests.php', 'fa-user-graduate', 'Student Requests'],
+                ['manage-tutors.php', 'fa-chalkboard-teacher', 'Manage Tutors'],
+                ['manage-blogs.php', 'fa-blog', 'Manage Blogs'],
+                ['contact-messages.php', 'fa-envelope', 'Contact Messages'],
+                ['update-banners.php', 'fa-images', 'Update Banners'],
+                ['settings.php', 'fa-cog', 'Settings'],
+                ['logout.php', 'fa-sign-out-alt', 'Logout']
+            ];
             
-            <nav class="nav-links">
-                <a href="dashboard.php"><i class="fas fa-tachometer-alt"></i> <span>Dashboard</span></a>
-                <a href="update-banners.php" class="active"><i class="fas fa-images"></i> <span>Banners</span></a>
-                <a href="manage-users.php"><i class="fas fa-users"></i> <span>Users</span></a>
-                <a href="manage-tutors.php"><i class="fas fa-chalkboard-teacher"></i> <span>Tutors</span></a>
-                <a href="manage-services.php"><i class="fas fa-concierge-bell"></i> <span>Services</span></a>
-                <a href="blog-posts.php"><i class="fas fa-blog"></i> <span>Blog Posts</span></a>
-                <a href="settings.php"><i class="fas fa-cog"></i> <span>Settings</span></a>
-                <a href="logout.php"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
-            </nav>
-        </aside>
-
-        <!-- Main Content -->
-        <main class="main-content">
-            <div class="header">
-                <h1>Manage Banners</h1>
-                <div class="admin-info">
-                    <div class="admin-avatar">
-                        <?php echo substr($_SESSION['admin_name'], 0, 1); ?>
-                    </div>
-                    <div>
-                        <strong><?php echo $_SESSION['admin_name']; ?></strong>
-                        <p style="font-size: 0.8rem; color: #666;">Administrator</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Stats Cards -->
-            <div class="stats-grid">
-                <div class="stat-card total">
-                    <div class="stat-number"><?php echo $total_count; ?></div>
-                    <div class="stat-label">Total Banners</div>
-                </div>
-                <div class="stat-card active">
-                    <div class="stat-number"><?php echo $active_count; ?></div>
-                    <div class="stat-label">Active Banners</div>
-                </div>
-                <div class="stat-card inactive">
-                    <div class="stat-number"><?php echo $inactive_count; ?></div>
-                    <div class="stat-label">Inactive Banners</div>
-                </div>
-            </div>
-
-            <!-- Message Alert -->
-            <?php if ($message): ?>
-                <div class="alert <?php echo $message_type; ?>">
-                    <span><?php echo $message; ?></span>
-                    <button class="close-btn" onclick="this.parentElement.style.display='none'">&times;</button>
-                </div>
-            <?php endif; ?>
-
-            <!-- Action Buttons -->
-            <div class="action-buttons">
-                <button class="btn btn-primary" onclick="openAddModal()">
-                    <i class="fas fa-plus"></i> Add New Banner
-                </button>
-                <a href="dashboard.php" class="btn btn-outline">
-                    <i class="fas fa-arrow-left"></i> Back to Dashboard
-                </a>
-            </div>
-
-            <!-- Banners Table -->
-            <div class="table-container">
-                <?php if (mysqli_num_rows($banners_result) > 0): ?>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Preview</th>
-                                <th>Title</th>
-                                <th>Position</th>
-                                <th>Order</th>
-                                <th>Status</th>
-                                <th>Created</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php while ($banner = mysqli_fetch_assoc($banners_result)): ?>
-                                <tr>
-                                    <td>
-                                        <div class="banner-preview">
-                                            <img src="../<?php echo $banner['image_url']; ?>" alt="<?php echo $banner['title']; ?>">
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <strong><?php echo $banner['title']; ?></strong><br>
-                                        <small style="color: #666;"><?php echo substr($banner['subtitle'], 0, 50) . '...'; ?></small>
-                                    </td>
-                                    <td>
-                                        <span class="badge" style="background: rgba(94, 43, 151, 0.1); color: var(--royal-violet); padding: 0.3rem 0.8rem; border-radius: 4px;">
-                                            <?php echo ucfirst($banner['position']); ?>
-                                        </span>
-                                    </td>
-                                    <td><?php echo $banner['display_order']; ?></td>
-                                    <td>
-                                        <span class="status-badge status-<?php echo $banner['status']; ?>">
-                                            <?php echo ucfirst($banner['status']); ?>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <?php echo date('M d, Y', strtotime($banner['created_at'])); ?>
-                                    </td>
-                                    <td>
-                                        <div class="actions">
-                                            <button class="action-btn edit-btn" onclick="openEditModal(
-                                                <?php echo $banner['id']; ?>,
-                                                '<?php echo addslashes($banner['title']); ?>',
-                                                '<?php echo addslashes($banner['subtitle']); ?>',
-                                                '<?php echo addslashes($banner['button_text']); ?>',
-                                                '<?php echo addslashes($banner['button_link']); ?>',
-                                                '<?php echo $banner['position']; ?>',
-                                                '<?php echo $banner['status']; ?>',
-                                                <?php echo $banner['display_order']; ?>,
-                                                '<?php echo $banner['image_url']; ?>'
-                                            )">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <a href="?toggle=<?php echo $banner['id']; ?>" class="action-btn toggle-btn" title="Toggle Status">
-                                                <i class="fas fa-power-off"></i>
-                                            </a>
-                                            <a href="?delete=<?php echo $banner['id']; ?>" 
-                                               class="action-btn delete-btn" 
-                                               title="Delete"
-                                               onclick="return confirm('Are you sure you want to delete this banner?')">
-                                                <i class="fas fa-trash"></i>
-                                            </a>
-                                        </div>
-                                    </td>
-                                </tr>
-                            <?php endwhile; ?>
-                        </tbody>
-                    </table>
-                <?php else: ?>
-                    <div class="empty-state">
-                        <i class="fas fa-images"></i>
-                        <h3>No Banners Found</h3>
-                        <p>Add your first banner by clicking the "Add New Banner" button above.</p>
-                    </div>
-                <?php endif; ?>
-            </div>
-        </main>
+            foreach ($menu_items as $item) {
+                $is_active = ($current_page == $item[0]) ? 'active' : '';
+                echo "<a href=\"{$item[0]}\" class=\"menu-item {$is_active}\">
+                        <i class=\"fas {$item[1]}\"></i>
+                        <span>{$item[2]}</span>
+                      </a>";
+            }
+            ?>
+        </div>
     </div>
 
-    <!-- Add Banner Modal -->
-    <div class="modal" id="addModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Add New Banner</h3>
-                <button class="close-modal" onclick="closeAddModal()">&times;</button>
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="page-header">
+            <div>
+                <h1>Manage Banners</h1>
+                <p>Add, edit, or remove website banners</p>
             </div>
-            <form method="POST" enctype="multipart/form-data">
-                <div class="modal-body">
+            <button onclick="showForm()" class="btn-primary">
+                <i class="fas fa-plus"></i> Add New Banner
+            </button>
+        </div>
+
+        <!-- Display Success/Error Messages -->
+        <?php if (isset($_SESSION['success'])): ?>
+            <div class="alert alert-success">
+                <i class="fas fa-check-circle"></i>
+                <?php 
+                echo $_SESSION['success']; 
+                unset($_SESSION['success']);
+                ?>
+            </div>
+        <?php endif; ?>
+        
+        <?php if (!empty($error)): ?>
+            <div class="alert alert-error">
+                <i class="fas fa-exclamation-circle"></i>
+                <?php echo $error; ?>
+            </div>
+        <?php endif; ?>
+
+        <!-- Add Banner Form -->
+        <div id="addBannerForm" class="form-container" style="display: none;">
+            <h2>Add New Banner</h2>
+            <form method="POST" enctype="multipart/form-data" onsubmit="return validateForm()">
+                <div class="form-row">
                     <div class="form-group">
-                        <label for="title">Banner Title *</label>
-                        <input type="text" id="title" name="title" class="form-control" required>
+                        <label for="position">Banner Position *</label>
+                        <select name="position" id="position" class="form-control" required>
+                            <option value="">Select Position</option>
+                            <option value="home">Home Page</option>
+                            <option value="about">About Page</option>
+                            <option value="services">Services Page</option>
+                            <option value="contact">Contact Page</option>
+                            <option value="courses">Courses Page</option>
+                        </select>
                     </div>
-                    
                     <div class="form-group">
-                        <label for="subtitle">Banner Subtitle *</label>
-                        <textarea id="subtitle" name="subtitle" class="form-control" rows="3" required></textarea>
+                        <label for="title">Title</label>
+                        <input type="text" name="title" id="title" class="form-control" placeholder="Enter banner title">
                     </div>
-                    
+                </div>
+                
+                <div class="form-group">
+                    <label for="subtitle">Subtitle/Description</label>
+                    <textarea name="subtitle" id="subtitle" class="form-control" rows="3" placeholder="Enter banner description"></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="button_text">Button Text</label>
+                        <input type="text" name="button_text" id="button_text" class="form-control" placeholder="e.g., Learn More">
+                    </div>
+                    <div class="form-group">
+                        <label for="button_link">Button Link</label>
+                        <input type="url" name="button_link" id="button_link" class="form-control" placeholder="https://example.com">
+                    </div>
+                </div>
+                
+                <div class="form-row">
                     <div class="form-group">
                         <label for="banner_image">Banner Image *</label>
-                        <input type="file" id="banner_image" name="banner_image" class="form-control" accept="image/*" required onchange="previewImage(this, 'addPreview')">
-                        <div class="file-preview" id="addPreview"></div>
-                        <small style="color: #666;">Recommended size: 1920x600px, Max size: 2MB</small>
+                        <input type="file" name="banner_image" id="banner_image" class="form-control" accept="image/*" required onchange="previewImage(event)">
+                        <img id="imagePreview" class="image-preview" alt="Image Preview">
                     </div>
-                    
-                    <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                        <div class="form-group">
-                            <label for="button_text">Button Text (Optional)</label>
-                            <input type="text" id="button_text" name="button_text" class="form-control" placeholder="e.g., Get Started">
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" name="is_active" id="is_active" value="1" checked>
+                            <label for="is_active">Active (Show on website)</label>
                         </div>
-                        
-                        <div class="form-group">
-                            <label for="button_link">Button Link (Optional)</label>
-                            <input type="text" id="button_link" name="button_link" class="form-control" placeholder="e.g., /services">
-                        </div>
-                    </div>
-                    
-                    <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
-                        <div class="form-group">
-                            <label for="position">Position *</label>
-                            <select id="position" name="position" class="form-control" required>
-                                <option value="hero">Hero Section</option>
-                                <option value="featured">Featured</option>
-                                <option value="sidebar">Sidebar</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="display_order">Display Order *</label>
-                            <input type="number" id="display_order" name="display_order" class="form-control" value="0" min="0" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="status">Status *</label>
-                            <select id="status" name="status" class="form-control" required>
-                                <option value="active">Active</option>
-                                <option value="inactive">Inactive</option>
-                            </select>
-                        </div>
+                        <small class="text-muted">Uncheck to temporarily hide this banner</small>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline" onclick="closeAddModal()">Cancel</button>
-                    <button type="submit" name="add_banner" class="btn btn-primary">Add Banner</button>
+                
+                <div class="form-group" style="display: flex; gap: 10px; margin-top: 30px;">
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-save"></i> Save Banner
+                    </button>
+                    <button type="button" onclick="hideForm()" class="btn-primary" style="background: #6c757d;">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
                 </div>
             </form>
         </div>
-    </div>
 
-    <!-- Edit Banner Modal -->
-    <div class="modal" id="editModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Edit Banner</h3>
-                <button class="close-modal" onclick="closeEditModal()">&times;</button>
+        <!-- Banners Grid -->
+        <h2>Existing Banners</h2>
+        <?php if (mysqli_num_rows($banners_result) > 0): ?>
+            <div class="banners-grid">
+                <?php while ($banner = mysqli_fetch_assoc($banners_result)): ?>
+                    <div class="banner-card">
+                        <img src="../<?php echo htmlspecialchars($banner['image_path']); ?>" 
+                             alt="<?php echo htmlspecialchars($banner['title']); ?>" 
+                             class="banner-image"
+                             onerror="this.src='https://via.placeholder.com/400x200?text=Banner+Image'">
+                        
+                        <div class="banner-content">
+                            <span class="banner-position"><?php echo ucfirst($banner['position']); ?></span>
+                            
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                                <h3 class="banner-title"><?php echo htmlspecialchars($banner['title'] ?: 'No Title'); ?></h3>
+                                <span class="status-badge <?php echo $banner['is_active'] ? 'status-active' : 'status-inactive'; ?>">
+                                    <?php echo $banner['is_active'] ? 'Active' : 'Inactive'; ?>
+                                </span>
+                            </div>
+                            
+                            <p class="banner-subtitle">
+                                <?php echo htmlspecialchars(substr($banner['subtitle'] ?: 'No description', 0, 100)); ?>
+                                <?php if (strlen($banner['subtitle'] ?: '') > 100): ?>...<?php endif; ?>
+                            </p>
+                            
+                            <?php if ($banner['button_text']): ?>
+                                <div style="margin: 10px 0;">
+                                    <small style="color: var(--royal-violet);">
+                                        <i class="fas fa-link"></i> 
+                                        Button: <?php echo htmlspecialchars($banner['button_text']); ?>
+                                    </small>
+                                </div>
+                            <?php endif; ?>
+                            
+                            <small style="color: #888; display: block; margin-top: 10px;">
+                                <i class="far fa-calendar"></i> 
+                                Added: <?php echo date('M d, Y', strtotime($banner['created_at'])); ?>
+                            </small>
+                            
+                            <div class="banner-actions">
+                                <button onclick="toggleStatus(<?php echo $banner['id']; ?>)" 
+                                        class="action-btn btn-toggle">
+                                    <i class="fas fa-power-off"></i>
+                                    <?php echo $banner['is_active'] ? 'Deactivate' : 'Activate'; ?>
+                                </button>
+                                
+                                <a href="edit-banner.php?id=<?php echo $banner['id']; ?>" 
+                                   class="action-btn btn-edit" style="text-decoration: none;">
+                                    <i class="fas fa-edit"></i> Edit
+                                </a>
+                                
+                                <button onclick="confirmDelete(<?php echo $banner['id']; ?>)" 
+                                        class="action-btn btn-delete">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                <?php endwhile; ?>
             </div>
-            <form method="POST" enctype="multipart/form-data">
-                <div class="modal-body">
-                    <input type="hidden" id="edit_id" name="banner_id">
-                    
-                    <div class="form-group">
-                        <label for="edit_title">Banner Title *</label>
-                        <input type="text" id="edit_title" name="title" class="form-control" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="edit_subtitle">Banner Subtitle *</label>
-                        <textarea id="edit_subtitle" name="subtitle" class="form-control" rows="3" required></textarea>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="edit_banner_image">Banner Image</label>
-                        <input type="file" id="edit_banner_image" name="banner_image" class="form-control" accept="image/*" onchange="previewImage(this, 'editPreview')">
-                        <div class="file-preview" id="editPreview"></div>
-                        <small style="color: #666;">Leave empty to keep existing image</small>
-                    </div>
-                    
-                    <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                        <div class="form-group">
-                            <label for="edit_button_text">Button Text</label>
-                            <input type="text" id="edit_button_text" name="button_text" class="form-control">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="edit_button_link">Button Link</label>
-                            <input type="text" id="edit_button_link" name="button_link" class="form-control">
-                        </div>
-                    </div>
-                    
-                    <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
-                        <div class="form-group">
-                            <label for="edit_position">Position *</label>
-                            <select id="edit_position" name="position" class="form-control" required>
-                                <option value="hero">Hero Section</option>
-                                <option value="featured">Featured</option>
-                                <option value="sidebar">Sidebar</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="edit_display_order">Display Order *</label>
-                            <input type="number" id="edit_display_order" name="display_order" class="form-control" min="0" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="edit_status">Status *</label>
-                            <select id="edit_status" name="status" class="form-control" required>
-                                <option value="active">Active</option>
-                                <option value="inactive">Inactive</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline" onclick="closeEditModal()">Cancel</button>
-                    <button type="submit" name="update_banner" class="btn btn-primary">Update Banner</button>
-                </div>
-            </form>
-        </div>
+        <?php else: ?>
+            <div style="text-align: center; padding: 50px 20px; background: white; border-radius: 12px; margin-top: 20px;">
+                <i class="fas fa-images" style="font-size: 60px; color: var(--medium-gray); margin-bottom: 20px;"></i>
+                <h3 style="color: var(--dark-gray); margin-bottom: 10px;">No Banners Found</h3>
+                <p style="color: #666; margin-bottom: 20px;">You haven't added any banners yet. Click "Add New Banner" to get started.</p>
+                <button onclick="showForm()" class="btn-primary">
+                    <i class="fas fa-plus"></i> Add Your First Banner
+                </button>
+            </div>
+        <?php endif; ?>
     </div>
 
     <script>
-        // Modal Functions
-        function openAddModal() {
-            document.getElementById('addModal').classList.add('active');
+        // Toggle sidebar on mobile
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('active');
         }
 
-        function closeAddModal() {
-            document.getElementById('addModal').classList.remove('active');
-            document.getElementById('addPreview').innerHTML = '';
-            document.querySelector('#addModal form').reset();
+        // Show/hide add banner form
+        function showForm() {
+            document.getElementById('addBannerForm').style.display = 'block';
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }
+        
+        function hideForm() {
+            document.getElementById('addBannerForm').style.display = 'none';
+            document.getElementById('imagePreview').style.display = 'none';
+            document.getElementById('imagePreview').src = '';
         }
 
-        function openEditModal(id, title, subtitle, buttonText, buttonLink, position, status, order, imageUrl) {
-            document.getElementById('edit_id').value = id;
-            document.getElementById('edit_title').value = title;
-            document.getElementById('edit_subtitle').value = subtitle;
-            document.getElementById('edit_button_text').value = buttonText;
-            document.getElementById('edit_button_link').value = buttonLink;
-            document.getElementById('edit_position').value = position;
-            document.getElementById('edit_status').value = status;
-            document.getElementById('edit_display_order').value = order;
+        // Image preview
+        function previewImage(event) {
+            const preview = document.getElementById('imagePreview');
+            const file = event.target.files[0];
             
-            // Show existing image preview
-            const previewDiv = document.getElementById('editPreview');
-            previewDiv.innerHTML = `<img src="../${imageUrl}" alt="${title}" style="max-width: 200px; max-height: 120px; border-radius: 8px;">`;
-            
-            document.getElementById('editModal').classList.add('active');
-        }
-
-        function closeEditModal() {
-            document.getElementById('editModal').classList.remove('active');
-            document.getElementById('editPreview').innerHTML = '';
-        }
-
-        // Image Preview Function
-        function previewImage(input, previewId) {
-            const preview = document.getElementById(previewId);
-            preview.innerHTML = '';
-            
-            if (input.files && input.files[0]) {
+            if (file) {
                 const reader = new FileReader();
-                
                 reader.onload = function(e) {
-                    const img = document.createElement('img');
-                    img.src = e.target.result;
-                    img.style.maxWidth = '200px';
-                    img.style.maxHeight = '120px';
-                    img.style.borderRadius = '8px';
-                    preview.appendChild(img);
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
                 }
-                
-                reader.readAsDataURL(input.files[0]);
+                reader.readAsDataURL(file);
             }
         }
 
-        // Close modals when clicking outside
-        window.onclick = function(event) {
-            const modals = document.querySelectorAll('.modal');
-            modals.forEach(modal => {
-                if (event.target === modal) {
-                    modal.classList.remove('active');
-                    document.getElementById('addPreview').innerHTML = '';
-                    document.getElementById('editPreview').innerHTML = '';
-                }
-            });
+        // Form validation
+        function validateForm() {
+            const position = document.getElementById('position').value;
+            const image = document.getElementById('banner_image').value;
+            
+            if (!position) {
+                alert('Please select a banner position');
+                return false;
+            }
+            
+            if (!image) {
+                alert('Please select an image for the banner');
+                return false;
+            }
+            
+            return true;
         }
 
-        // Auto-hide message alert after 5 seconds
+        // Toggle banner status
+        function toggleStatus(bannerId) {
+            if (confirm('Are you sure you want to change the status of this banner?')) {
+                window.location.href = '?toggle=' + bannerId;
+            }
+        }
+
+        // Delete banner confirmation
+        function confirmDelete(bannerId) {
+            if (confirm('Are you sure you want to delete this banner? This action cannot be undone.')) {
+                window.location.href = '?delete=' + bannerId;
+            }
+        }
+
+        // Auto-hide alerts after 5 seconds
         setTimeout(() => {
-            const alert = document.querySelector('.alert');
-            if (alert) {
-                alert.style.display = 'none';
-            }
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                alert.style.opacity = '0';
+                alert.style.transition = 'opacity 0.5s';
+                setTimeout(() => alert.style.display = 'none', 500);
+            });
         }, 5000);
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(event) {
+            const sidebar = document.getElementById('sidebar');
+            const toggleBtn = document.querySelector('.mobile-menu-toggle');
+            
+            if (window.innerWidth <= 1200 && 
+                sidebar.classList.contains('active') &&
+                !sidebar.contains(event.target) &&
+                !toggleBtn.contains(event.target)) {
+                sidebar.classList.remove('active');
+            }
+        });
     </script>
 </body>
 </html>

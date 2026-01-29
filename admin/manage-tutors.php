@@ -919,6 +919,10 @@ $result = mysqli_query($conn, $query);
                 <i class="fas fa-user-graduate"></i>
                 <span>Student Requests</span>
             </a>
+            <a href="manage-blogs.php" class="menu-item <?php echo $current_page == 'manage-blogs.php' ? 'active' : ''; ?>">
+               <i class="fas fa-blog"></i>
+               <span>Manage Blogs</span>
+            </a>
             <a href="assignments.php" class="menu-item">
                 <i class="fas fa-handshake"></i>
                 <span>Assignments</span>

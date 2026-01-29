@@ -14,9 +14,14 @@ $total_tutors = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as count
 $pending_tutors = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as count FROM tutors WHERE status = 'pending'"))['count'];
 $unread_contacts = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as count FROM contacts WHERE status = 'unread'"))['count'];
 
+// Get blog statistics
+$total_posts = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as count FROM blog_posts"))['count'];
+$published_posts = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as count FROM blog_posts WHERE status = 'published'"))['count'];
+
 // Recent activities
 $recent_students = mysqli_query($conn, "SELECT * FROM student_requirements ORDER BY created_at DESC LIMIT 5");
 $recent_contacts = mysqli_query($conn, "SELECT * FROM contacts ORDER BY created_at DESC LIMIT 5");
+$recent_posts = mysqli_query($conn, "SELECT * FROM blog_posts ORDER BY created_at DESC LIMIT 5");
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -286,6 +291,10 @@ $recent_contacts = mysqli_query($conn, "SELECT * FROM contacts ORDER BY created_
             border-top-color: var(--info-blue);
         }
 
+        .stat-card.blogs {
+            border-top-color: var(--success-green);
+        }
+
         .stat-icon {
             width: 70px;
             height: 70px;
@@ -313,6 +322,10 @@ $recent_contacts = mysqli_query($conn, "SELECT * FROM contacts ORDER BY created_
             background: linear-gradient(135deg, var(--info-blue), #138496);
         }
 
+        .stat-card.blogs .stat-icon {
+            background: linear-gradient(135deg, var(--success-green), #20c997);
+        }
+
         .stat-content {
             flex: 1;
         }
@@ -334,8 +347,14 @@ $recent_contacts = mysqli_query($conn, "SELECT * FROM contacts ORDER BY created_
         /* Dashboard Grid */
         .dashboard-grid {
             display: grid;
-            grid-template-columns: 2fr 1fr;
+            grid-template-columns: 1fr 1fr;
             gap: 30px;
+        }
+
+        @media (max-width: 1200px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         .section-card {
@@ -438,6 +457,21 @@ $recent_contacts = mysqli_query($conn, "SELECT * FROM contacts ORDER BY created_
             color: #0c5460;
         }
 
+        .status-draft { 
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-published { 
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-archived { 
+            background: #f8d7da;
+            color: #721c24;
+        }
+
         .status-unread { 
             background: var(--magenta-pink);
             color: white;
@@ -535,6 +569,49 @@ $recent_contacts = mysqli_query($conn, "SELECT * FROM contacts ORDER BY created_
             color: #666;
             font-size: 13px;
             line-height: 1.4;
+        }
+
+        /* Recent Posts */
+        .posts-list {
+            margin-top: 25px;
+        }
+
+        .post-item {
+            background: var(--light-gray);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .post-item:hover {
+            background: white;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+        }
+
+        .post-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .post-title {
+            font-weight: 600;
+            color: var(--dark-gray);
+            font-size: 14px;
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .post-meta {
+            color: #666;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
         /* Mobile Menu Toggle */
@@ -638,7 +715,7 @@ $recent_contacts = mysqli_query($conn, "SELECT * FROM contacts ORDER BY created_
                 padding: 15px;
             }
             
-            .message-item {
+            .message-item, .post-item {
                 padding: 12px;
             }
         }
@@ -729,7 +806,7 @@ $recent_contacts = mysqli_query($conn, "SELECT * FROM contacts ORDER BY created_
         <i class="fas fa-bars"></i>
     </button>
 
-    <!-- Sidebar - Exact match with manage-tutors.php -->
+    <!-- Sidebar - Updated with Manage Blogs -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <h2>Home Castle Tutor</h2>
@@ -753,6 +830,10 @@ $recent_contacts = mysqli_query($conn, "SELECT * FROM contacts ORDER BY created_
             <a href="manage-tutors.php" class="menu-item <?php echo $current_page == 'manage-tutors.php' ? 'active' : ''; ?>">
                 <i class="fas fa-chalkboard-teacher"></i>
                 <span>Manage Tutors</span>
+            </a>
+            <a href="manage-blogs.php" class="menu-item <?php echo $current_page == 'manage-blogs.php' ? 'active' : ''; ?>">
+                <i class="fas fa-blog"></i>
+                <span>Manage Blogs</span>
             </a>
             <a href="contact-messages.php" class="menu-item <?php echo $current_page == 'contact-messages.php' ? 'active' : ''; ?>">
                 <i class="fas fa-envelope"></i>
@@ -861,6 +942,16 @@ $recent_contacts = mysqli_query($conn, "SELECT * FROM contacts ORDER BY created_
                     <div class="stat-number"><?php echo $unread_contacts; ?></div>
                 </div>
             </div>
+            
+            <div class="stat-card blogs">
+                <div class="stat-icon">
+                    <i class="fas fa-blog"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>Blog Posts</h3>
+                    <div class="stat-number"><?php echo $total_posts; ?> <small style="font-size: 14px; color: #666;">(<?php echo $published_posts; ?> published)</small></div>
+                </div>
+            </div>
         </div>
         
         <!-- Dashboard Grid -->
@@ -919,7 +1010,7 @@ $recent_contacts = mysqli_query($conn, "SELECT * FROM contacts ORDER BY created_
                 </table>
             </div>
             
-            <!-- Quick Actions & Recent Messages -->
+            <!-- Quick Actions & Recent Content -->
             <div class="section-card">
                 <div class="section-title">
                     <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
@@ -931,9 +1022,9 @@ $recent_contacts = mysqli_query($conn, "SELECT * FROM contacts ORDER BY created_
                         <h4>Add New Tutor</h4>
                     </a>
                     
-                    <a href="update-content.php" class="action-card">
-                        <i class="fas fa-edit"></i>
-                        <h4>Update Content</h4>
+                    <a href="manage-blogs.php" class="action-card">
+                        <i class="fas fa-blog"></i>
+                        <h4>Manage Blogs</h4>
                     </a>
                     
                     <a href="contact-messages.php" class="action-card">
@@ -947,8 +1038,46 @@ $recent_contacts = mysqli_query($conn, "SELECT * FROM contacts ORDER BY created_
                     </a>
                 </div>
                 
+                <!-- Recent Blog Posts -->
+                <div class="posts-list">
+                    <div class="section-title" style="border: none; padding: 0; margin: 20px 0 15px 0;">
+                        <h4 style="font-size: 16px; color: var(--primary-purple); margin: 0;">
+                            <i class="fas fa-newspaper"></i> Recent Blog Posts
+                        </h4>
+                        <a href="manage-blogs.php" style="font-size: 12px;">View All</a>
+                    </div>
+                    
+                    <?php while($post = mysqli_fetch_assoc($recent_posts)): ?>
+                    <div class="post-item">
+                        <div class="post-header">
+                            <div class="post-title" title="<?php echo htmlspecialchars($post['title']); ?>">
+                                <?php echo htmlspecialchars(substr($post['title'], 0, 40)); ?>
+                                <?php if(strlen($post['title']) > 40): ?>...<?php endif; ?>
+                            </div>
+                            <span class="status-badge status-<?php echo $post['status']; ?>">
+                                <?php echo ucfirst($post['status']); ?>
+                            </span>
+                        </div>
+                        <div class="post-meta">
+                            <span><i class="fas fa-calendar"></i> <?php echo date('M d', strtotime($post['created_at'])); ?></span>
+                            <span><i class="fas fa-folder"></i> <?php echo htmlspecialchars($post['category']); ?></span>
+                        </div>
+                    </div>
+                    <?php endwhile; ?>
+                    <?php if(mysqli_num_rows($recent_posts) == 0): ?>
+                    <div style="text-align: center; padding: 20px; color: #666;">
+                        <i class="fas fa-newspaper" style="font-size: 30px; margin-bottom: 10px; opacity: 0.3;"></i>
+                        <p style="font-size: 14px;">No blog posts yet</p>
+                        <a href="manage-blogs.php" class="btn-small" style="margin-top: 10px; display: inline-block;">
+                            <i class="fas fa-plus"></i> Create First Post
+                        </a>
+                    </div>
+                    <?php endif; ?>
+                </div>
+                
+                <!-- Recent Messages -->
                 <div class="messages-list">
-                    <div class="section-title" style="border: none; padding: 0; margin: 0 0 15px 0;">
+                    <div class="section-title" style="border: none; padding: 0; margin: 20px 0 15px 0;">
                         <h4 style="font-size: 16px; color: var(--primary-purple); margin: 0;">
                             <i class="fas fa-comments"></i> Recent Messages
                         </h4>
