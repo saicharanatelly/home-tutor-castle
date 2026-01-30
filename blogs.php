@@ -1,6 +1,7 @@
 <?php
 // blogs.php - User Blog Page
 include 'includes/config.php';
+include 'includes/header.php';
 
 // Get pagination
 $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
@@ -62,7 +63,7 @@ if (isset($_GET['slug'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo isset($post) ? htmlspecialchars($post['title']) : 'Blog - Home Castle Tutor'; ?></title>
+    <title><?php echo isset($post) ? htmlspecialchars($post['title']) . ' - Home Castle Tutor' : 'Blog - Home Castle Tutor'; ?></title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
@@ -101,7 +102,7 @@ if (isset($_GET['slug'])) {
             padding: 0 20px;
         }
         
-        /* Header */
+        /* Header 
         .header {
             background: linear-gradient(135deg, var(--primary-purple) 0%, var(--royal-violet) 100%);
             color: white;
@@ -122,7 +123,7 @@ if (isset($_GET['slug'])) {
             max-width: 600px;
             margin: 0 auto;
         }
-        
+        */
         /* Blog Grid */
         .blog-grid {
             display: grid;
@@ -495,46 +496,6 @@ if (isset($_GET['slug'])) {
             margin-bottom: 10px;
         }
         
-        /* Navigation */
-        .navbar {
-            background: white;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
-        
-        .nav-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px 0;
-        }
-        
-        .logo {
-            font-family: 'Poppins', sans-serif;
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--primary-purple);
-            text-decoration: none;
-        }
-        
-        .nav-links {
-            display: flex;
-            gap: 30px;
-        }
-        
-        .nav-links a {
-            color: var(--dark-gray);
-            text-decoration: none;
-            font-weight: 500;
-            transition: all 0.3s ease;
-        }
-        
-        .nav-links a:hover {
-            color: var(--royal-violet);
-        }
-        
         /* Responsive */
         @media (max-width: 992px) {
             .blog-layout {
@@ -570,37 +531,13 @@ if (isset($_GET['slug'])) {
             .post-content {
                 padding: 0 20px 30px;
             }
-            
-            .nav-links {
-                display: none;
-            }
-            
-            .mobile-menu-toggle {
-                display: block;
-            }
         }
     </style>
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="container nav-container">
-            <a href="index.php" class="logo">
-                <i class="fas fa-graduation-cap"></i> Home Castle Tutor
-            </a>
-            <div class="nav-links">
-                <a href="index.php">Home</a>
-                <a href="tutors.php">Find Tutors</a>
-                <a href="blogs.php" style="color: var(--royal-violet);">Blog</a>
-                <a href="contact.php">Contact</a>
-                <a href="student-request.php" class="btn-primary" style="padding: 8px 20px; background: var(--magenta-pink); color: white; border-radius: 6px; text-decoration: none;">Request Tutor</a>
-            </div>
-        </div>
-    </nav>
-    
     <?php if(isset($post)): ?>
     <!-- Single Blog Post -->
-    <div class="container">
+    <div class="container" style="padding-top: 40px;">
         <article class="single-post">
             <div class="post-header">
                 <h1 class="post-title"><?php echo htmlspecialchars($post['title']); ?></h1>
@@ -668,7 +605,7 @@ if (isset($_GET['slug'])) {
                     </form>
                     
                     <?php if(!empty($category)): ?>
-                        <a href="blogs.php" class="btn-primary" style="padding: 12px 25px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
+                        <a href="blogs.php" class="btn-primary" style="padding: 12px 25px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; background: var(--magenta-pink); color: white; border-radius: 8px; font-weight: 500;">
                             <i class="fas fa-times"></i> Clear Filter
                         </a>
                     <?php endif; ?>
@@ -745,7 +682,7 @@ if (isset($_GET['slug'])) {
                         <h3>No Blog Posts Found</h3>
                         <p><?php echo empty($search) ? 'No blog posts available yet. Check back soon!' : 'No posts match your search criteria.'; ?></p>
                         <?php if(!empty($search)): ?>
-                            <a href="blogs.php" class="btn-primary" style="margin-top: 20px; display: inline-block; padding: 12px 25px; text-decoration: none;">
+                            <a href="blogs.php" class="btn-primary" style="margin-top: 20px; display: inline-block; padding: 12px 25px; text-decoration: none; background: var(--magenta-pink); color: white; border-radius: 8px; font-weight: 500;">
                                 <i class="fas fa-times"></i> Clear Search
                             </a>
                         <?php endif; ?>
@@ -819,7 +756,6 @@ if (isset($_GET['slug'])) {
         </div>
     </div>
     <?php endif; ?>
-    include 'includes/footer.php'; ?>
     
     <script>
         // Subscribe Form
@@ -850,6 +786,7 @@ if (isset($_GET['slug'])) {
 </html>
 
 <?php
+include 'includes/footer.php';
 // Close database connection
 mysqli_close($conn);
 ?>
