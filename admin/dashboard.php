@@ -887,6 +887,7 @@ $recent_posts = mysqli_query($conn, "SELECT * FROM blog_posts ORDER BY created_a
                 <h2>Welcome back, <?php echo htmlspecialchars($_SESSION['admin_username']); ?>!</h2>
                 <p>Here's what's happening with your tutoring platform today.</p>
             </div>
+            <!--
             <div class="admin-info-section">
                 <div class="admin-avatar-large">
                     <?php echo strtoupper(substr($_SESSION['admin_username'], 0, 1)); ?>
@@ -898,7 +899,7 @@ $recent_posts = mysqli_query($conn, "SELECT * FROM blog_posts ORDER BY created_a
                 <a href="logout.php" class="logout-btn">
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </a>
-            </div>
+            </div>  -->
         </div>
         
         <!-- Statistics Cards -->

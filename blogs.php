@@ -102,28 +102,32 @@ if (isset($_GET['slug'])) {
             padding: 0 20px;
         }
         
-        /* Header 
-        .header {
+        /* Blog Header */
+        .blog-header {
             background: linear-gradient(135deg, var(--primary-purple) 0%, var(--royal-violet) 100%);
             color: white;
             padding: 80px 0;
             text-align: center;
             margin-bottom: 60px;
+            border-radius: 0 0 20px 20px;
         }
         
-        .header h1 {
+        .blog-header h1 {
             color: white;
             font-size: 48px;
             margin-bottom: 20px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
         
-        .header p {
+        .blog-header p {
             font-size: 18px;
-            opacity: 0.9;
+            opacity: 0.95;
             max-width: 600px;
             margin: 0 auto;
+            font-weight: 300;
+            line-height: 1.6;
         }
-        */
+        
         /* Blog Grid */
         .blog-grid {
             display: grid;
@@ -496,6 +500,28 @@ if (isset($_GET['slug'])) {
             margin-bottom: 10px;
         }
         
+        /* Buttons */
+        .btn-primary {
+            padding: 12px 25px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--magenta-pink);
+            color: white;
+            border-radius: 8px;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            background: var(--royal-violet);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(94, 43, 151, 0.2);
+        }
+        
         /* Responsive */
         @media (max-width: 992px) {
             .blog-layout {
@@ -509,15 +535,28 @@ if (isset($_GET['slug'])) {
             .post-title {
                 font-size: 30px;
             }
-        }
-        
-        @media (max-width: 768px) {
-            .header {
+            
+            .blog-header {
                 padding: 60px 0;
             }
             
-            .header h1 {
+            .blog-header h1 {
                 font-size: 36px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .blog-header {
+                padding: 50px 0;
+            }
+            
+            .blog-header h1 {
+                font-size: 32px;
+            }
+            
+            .blog-header p {
+                font-size: 16px;
+                padding: 0 20px;
             }
             
             .blog-grid {
@@ -530,6 +569,30 @@ if (isset($_GET['slug'])) {
             
             .post-content {
                 padding: 0 20px 30px;
+            }
+            
+            .post-meta {
+                flex-wrap: wrap;
+                gap: 10px;
+                justify-content: center;
+            }
+            
+            .search-box {
+                width: 100%;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .blog-header {
+                padding: 40px 0;
+            }
+            
+            .blog-header h1 {
+                font-size: 28px;
+            }
+            
+            .post-title {
+                font-size: 24px;
             }
         }
     </style>
@@ -584,7 +647,7 @@ if (isset($_GET['slug'])) {
     
     <?php else: ?>
     <!-- Blog List Page -->
-    <div class="header">
+    <div class="blog-header">
         <div class="container">
             <h1>Our Blog</h1>
             <p>Stay updated with the latest tips, news, and insights about home tutoring and education</p>
@@ -605,7 +668,7 @@ if (isset($_GET['slug'])) {
                     </form>
                     
                     <?php if(!empty($category)): ?>
-                        <a href="blogs.php" class="btn-primary" style="padding: 12px 25px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; background: var(--magenta-pink); color: white; border-radius: 8px; font-weight: 500;">
+                        <a href="blogs.php" class="btn-primary">
                             <i class="fas fa-times"></i> Clear Filter
                         </a>
                     <?php endif; ?>
@@ -682,7 +745,7 @@ if (isset($_GET['slug'])) {
                         <h3>No Blog Posts Found</h3>
                         <p><?php echo empty($search) ? 'No blog posts available yet. Check back soon!' : 'No posts match your search criteria.'; ?></p>
                         <?php if(!empty($search)): ?>
-                            <a href="blogs.php" class="btn-primary" style="margin-top: 20px; display: inline-block; padding: 12px 25px; text-decoration: none; background: var(--magenta-pink); color: white; border-radius: 8px; font-weight: 500;">
+                            <a href="blogs.php" class="btn-primary" style="margin-top: 20px; display: inline-block;">
                                 <i class="fas fa-times"></i> Clear Search
                             </a>
                         <?php endif; ?>
@@ -746,8 +809,7 @@ if (isset($_GET['slug'])) {
                     <form id="subscribeForm" style="position: relative;">
                         <input type="email" placeholder="Your email address" required 
                                style="width: 100%; padding: 12px 20px; border: none; border-radius: 6px; font-size: 15px; margin-bottom: 15px;">
-                        <button type="submit" 
-                                style="width: 100%; padding: 12px; background: var(--magenta-pink); color: white; border: none; border-radius: 6px; font-weight: 500; cursor: pointer; transition: all 0.3s ease;">
+                        <button type="submit" class="btn-primary" style="width: 100%; background: var(--magenta-pink); color: white;">
                             Subscribe
                         </button>
                     </form>
