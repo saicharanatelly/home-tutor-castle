@@ -31,6 +31,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
         body {
             font-family: 'Inter', 'Roboto', sans-serif;
+            margin: 0;
         }
         
         h1, h2, h3, h4, h5, h6 {
@@ -44,15 +45,17 @@ if (session_status() === PHP_SESSION_NONE) {
             position: sticky;
             top: 0;
             z-index: 1000;
+            width: 100%;
         }
 
         .navbar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 1.2rem 5%;
+            padding: 0.2rem 5%;
             max-width: 1400px;
             margin: 0 auto;
+            position: relative;
         }
 
         .logo {
@@ -64,6 +67,7 @@ if (session_status() === PHP_SESSION_NONE) {
             align-items: center;
             gap: 10px;
             font-family: 'Poppins', sans-serif;
+            z-index: 1001;
         }
 
         .logo-img {
@@ -79,6 +83,8 @@ if (session_status() === PHP_SESSION_NONE) {
             display: flex;
             gap: 2.5rem;
             list-style: none;
+            margin: 0;
+            padding: 0;
         }
 
         .nav-links a {
@@ -122,6 +128,7 @@ if (session_status() === PHP_SESSION_NONE) {
             border: 2px solid var(--magenta-pink);
             font-family: 'Poppins', sans-serif;
             font-size: 16px;
+            display: inline-block;
         }
 
         .cta-button:hover {
@@ -137,6 +144,115 @@ if (session_status() === PHP_SESSION_NONE) {
             font-size: 1.5rem;
             color: var(--white);
             cursor: pointer;
+            z-index: 1002;
+            padding: 0.5rem;
+        }
+        
+        /* Mobile Menu Styles */
+        .mobile-menu {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 999;
+        }
+        
+        .mobile-menu.active {
+            display: block;
+        }
+        
+        .mobile-menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 999;
+        }
+        
+        .mobile-menu-content {
+            position: fixed;
+            top: 0;
+            left: -300px;
+            width: 280px;
+            height: 100%;
+            background: linear-gradient(135deg, var(--primary-purple), var(--royal-violet));
+            padding: 80px 20px 20px;
+            overflow-y: auto;
+            transition: var(--transition);
+            z-index: 1000;
+            box-shadow: 5px 0 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .mobile-menu.active .mobile-menu-content {
+            left: 0;
+        }
+        
+        .mobile-nav-links {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .mobile-nav-links li {
+            width: 100%;
+        }
+        
+        .mobile-nav-links a {
+            display: block;
+            color: var(--white);
+            text-decoration: none;
+            padding: 1rem 1.5rem;
+            font-size: 1.1rem;
+            border-radius: 8px;
+            transition: var(--transition);
+            font-family: 'Poppins', sans-serif;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .mobile-nav-links a:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--warm-orange);
+        }
+        
+        .mobile-cta-button {
+            background: var(--magenta-pink);
+            color: var(--white);
+            padding: 1rem 1.5rem;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: var(--transition);
+            border: 2px solid var(--magenta-pink);
+            font-family: 'Poppins', sans-serif;
+            font-size: 16px;
+            display: block;
+            text-align: center;
+            margin-top: 2rem;
+            width: 100%;
+        }
+        
+        .mobile-cta-button:hover {
+            background: transparent;
+            color: var(--magenta-pink);
+        }
+        
+        .close-menu-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            color: var(--white);
+            font-size: 1.5rem;
+            cursor: pointer;
+            z-index: 1001;
         }
         
         .locations-section {
@@ -178,22 +294,17 @@ if (session_status() === PHP_SESSION_NONE) {
             }
             
             .nav-links {
-                position: fixed;
-                top: 70px;
-                left: -100%;
-                width: 100%;
-                height: calc(100vh - 70px);
-                background: linear-gradient(135deg, var(--primary-purple), var(--royal-violet));
-                flex-direction: column;
-                align-items: center;
-                padding: 2rem;
-                transition: var(--transition);
-                box-shadow: var(--shadow);
-                z-index: 999;
+                display: none;
             }
             
-            .nav-links.active {
-                left: 0;
+            .navbar .cta-button {
+                display: none;
+            }
+        }
+        
+        @media (min-width: 769px) {
+            .mobile-menu {
+                display: none !important;
             }
         }
     </style>
@@ -206,7 +317,35 @@ if (session_status() === PHP_SESSION_NONE) {
              <img src="images/logo.png" alt="Home Castle Tutor Logo" class="logo-img">
              <!-- <span>Home Castle Tutor</span> -->
            </a> 
+            <!-- Desktop Navigation -->
             <ul class="nav-links">
+                <li><a href="index.php">Home</a></li>
+                <li><a href="about.php">About Us</a></li>
+                <li><a href="services.php">HTC Services</a></li>
+                <li><a href="subscription-plans.php">Subscriptions</a></li>
+                <li><a href="blogs.php">Blogs</a></li>
+                <li><a href="reviews.php">Reviews</a></li>
+                <li><a href="contact.php">Contact Us</a></li>
+            </ul>
+            
+            <!-- Desktop CTA Button -->
+            <a href="student-portal.php" class="cta-button">Student Portal</a>
+            
+            <!-- Mobile Menu Button -->
+            <button class="mobile-menu-btn" id="mobileMenuBtn">
+                <i class="fas fa-bars"></i>
+            </button>
+        </nav>
+    </header>
+    
+    <!-- Mobile Menu (Hidden by default) -->
+    <div class="mobile-menu" id="mobileMenu">
+        <div class="mobile-menu-overlay" id="mobileMenuOverlay"></div>
+        <div class="mobile-menu-content">
+            <button class="close-menu-btn" id="closeMenuBtn">
+                <i class="fas fa-times"></i>
+            </button>
+            <ul class="mobile-nav-links">
                 <li><a href="index.php">Home</a></li>
                 <li><a href="services.php">Services</a></li>
                 <li><a href="subscription-plans.php">Subscription Plans</a></li>
@@ -215,11 +354,63 @@ if (session_status() === PHP_SESSION_NONE) {
                 <li><a href="about.php">About Us</a></li>
                 <li><a href="contact.php">Contact Us</a></li>
             </ul>
+            <a href="student-portal.php" class="mobile-cta-button">Student Portal</a>
+        </div>
+    </div>
+
+    <script>
+        // Mobile menu functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+            const closeMenuBtn = document.getElementById('closeMenuBtn');
+            const mobileMenu = document.getElementById('mobileMenu');
+            const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
+            const mobileNavLinks = document.querySelectorAll('.mobile-nav-links a');
             
-            <a href="student-portal.php" class="cta-button">Student Portal</a>
+            // Open mobile menu
+            if (mobileMenuBtn) {
+                mobileMenuBtn.addEventListener('click', function() {
+                    mobileMenu.classList.add('active');
+                    document.body.style.overflow = 'hidden'; // Prevent scrolling
+                    
+                    // Change hamburger icon to X
+                    const icon = this.querySelector('i');
+                    icon.classList.remove('fa-bars');
+                    icon.classList.add('fa-times');
+                });
+            }
             
-            <button class="mobile-menu-btn" id="mobileMenuBtn">
-                <i class="fas fa-bars"></i>
-            </button>
-        </nav>
-    </header>
+            // Close mobile menu
+            function closeMobileMenu() {
+                mobileMenu.classList.remove('active');
+                document.body.style.overflow = ''; // Restore scrolling
+                
+                // Change X icon back to hamburger
+                const icon = mobileMenuBtn.querySelector('i');
+                icon.classList.remove('fa-times');
+                icon.classList.add('fa-bars');
+            }
+            
+            // Close menu when clicking close button
+            if (closeMenuBtn) {
+                closeMenuBtn.addEventListener('click', closeMobileMenu);
+            }
+            
+            // Close menu when clicking overlay
+            if (mobileMenuOverlay) {
+                mobileMenuOverlay.addEventListener('click', closeMobileMenu);
+            }
+            
+            // Close menu when clicking on any mobile nav link
+            mobileNavLinks.forEach(link => {
+                link.addEventListener('click', closeMobileMenu);
+            });
+            
+            // Close menu with Escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && mobileMenu.classList.contains('active')) {
+                    closeMobileMenu();
+                }
+            });
+        });
+    </script>
